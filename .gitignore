@@ -1,0 +1,31 @@
+# Claude state
+.claude/projects/
+.claude/memory/
+.claude/.credentials.json
+.claude.json
+
+# Build artefacts
+build/
+*.elf
+*.bin
+*.hex
+*.uf2
+*.map
+*.su
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# Editor
+.vscode/settings.json
+*.swp
+*~
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

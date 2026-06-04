@@ -1,0 +1,22 @@
+{
+    "_note": "Copied to .mcu-profile.json by /scaffold-mcu-project arm. Edit flash/debugServer/reset for your specific chip and probe.",
+    "_chips": {
+        "stm32f4x":   "OPENOCD_INTERFACE=interface/stlink.cfg  OPENOCD_TARGET=target/stm32f4x.cfg",
+        "stm32g0x":   "OPENOCD_INTERFACE=interface/stlink.cfg  OPENOCD_TARGET=target/stm32g0x.cfg",
+        "stm32l4x":   "OPENOCD_INTERFACE=interface/stlink.cfg  OPENOCD_TARGET=target/stm32l4x.cfg",
+        "rp2040":     "OPENOCD_INTERFACE=interface/cmsis-dap.cfg  OPENOCD_TARGET=target/rp2040.cfg",
+        "ti_mspm0":   "OPENOCD_INTERFACE=interface/xds110.cfg  OPENOCD_TARGET=target/ti_mspm0.cfg",
+        "stm32_bmp":  "Omit flash/debugServer — use BMP GDB server config in launch.json instead"
+    },
+    "OPENOCD_INTERFACE": "interface/stlink.cfg",
+    "OPENOCD_TARGET": "target/stm32f4x.cfg",
+    "SVD_FILE": "",
+    "build":      "cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && cmake --build build -- -j$(nproc)",
+    "buildDebug": "cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug   -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && cmake --build build -- -j$(nproc)",
+    "clean":      "rm -rf build",
+    "flash":      "openocd -f ${OPENOCD_INTERFACE:-interface/stlink.cfg} -f ${OPENOCD_TARGET:?set OPENOCD_TARGET in .mcu-profile.json} -c 'program build/firmware.elf verify reset exit'",
+    "erase":      "openocd -f ${OPENOCD_INTERFACE:-interface/stlink.cfg} -f ${OPENOCD_TARGET:?set OPENOCD_TARGET in .mcu-profile.json} -c 'init; reset halt; flash erase_sector 0 0 last; exit'",
+    "reset":      "openocd -f ${OPENOCD_INTERFACE:-interface/stlink.cfg} -f ${OPENOCD_TARGET:?set OPENOCD_TARGET in .mcu-profile.json} -c 'init; reset run; exit'",
+    "serial":     "picocom -b ${BAUD:-115200} ${PORT:-/dev/ttyACM0}",
+    "debugServer":"openocd -f ${OPENOCD_INTERFACE:-interface/stlink.cfg} -f ${OPENOCD_TARGET:?set OPENOCD_TARGET in .mcu-profile.json}"
+}

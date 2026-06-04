@@ -1,0 +1,52 @@
+{
+    "name": "dev-template-embedded-arm",
+    "build": {
+        "context": "..",
+        "dockerfile": "../Dockerfile"
+    },
+    "remoteUser": "dev",
+    "workspaceFolder": "/workspace",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+
+    "mounts": [
+        "source=${localEnv:HOME}/.claude.json,target=/host-claude-auth.json,type=bind",
+        "source=${localEnv:HOME}/.claude,target=/host-claude-dir,type=bind"
+    ],
+
+    "runArgs": [
+        "--init",
+        "--device=/dev/bus/usb",
+        "--group-add=dialout",
+        "--group-add=plugdev"
+    ],
+
+    "postCreateCommand": "bash /usr/local/bin/post-create.sh",
+
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "anthropic.claude-code",
+                "eamodio.gitlens",
+                "ms-azuretools.vscode-docker",
+                "github.vscode-pull-request-github",
+                "marus25.cortex-debug",
+                "mcu-debug.peripheral-viewer",
+                "mcu-debug.memory-view",
+                "mcu-debug.rtos-views",
+                "llvm-vs-code-extensions.vscode-clangd",
+                "ms-vscode.cmake-tools",
+                "twxs.cmake",
+                "xaver.clang-format",
+                "notskm.clang-tidy",
+                "dan-c-underwood.arm",
+                "zixuanwang.linkerscript",
+                "jeff-hykin.better-cpp-syntax"
+            ],
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "bash",
+                "clangd.arguments": ["--compile-commands-dir=${workspaceFolder}/build"],
+                "cortex-debug.armToolchainPath": "/usr/bin"
+            }
+        }
+    }
+}
