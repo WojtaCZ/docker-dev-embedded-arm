@@ -81,10 +81,15 @@ svd-find stm32wba55 | head -2
 pass "svd-find locates a WBA5x SVD"
 
 echo "== probe-rs knows the parts OpenOCD cannot flash =="
-probe-rs chip list 2>/dev/null | grep -qi 'STM32WBA65' \
+# Captured, not piped. `probe-rs chip list` prints ~5000 lines and exits 1 when
+# its stdout closes early, so `| grep -q` under `set -o pipefail` reports that
+# instead of the match -- and whether it does depends on where the pattern sorts
+# alphabetically. Capturing once is both correct and faster.
+chips=$(probe-rs chip list 2>/dev/null)
+grep -qi 'STM32WBA65' <<< "$chips" \
     || fail "probe-rs does not list STM32WBA65 — the documented WBA65 flash path is broken"
 pass "probe-rs supports STM32WBA65"
-probe-rs chip list 2>/dev/null | grep -qi 'STM32F407' || fail "probe-rs missing STM32F407"
+grep -qi 'STM32F407' <<< "$chips" || fail "probe-rs missing STM32F407"
 pass "probe-rs supports STM32F407"
 
 echo "== claude assets =="
@@ -139,6 +144,8 @@ CPP
 
 cat > src/startup.cpp <<'CPP'
 #include <cstdint>
+// SCB, __DSB and __ISB come from the CMSIS device header, not <cstdint>.
+#include "stm32wba65xx.h"
 extern std::uint32_t _sidata, _sdata, _edata, _sbss, _ebss, _estack;
 extern void (*__init_array_start)();
 extern void (*__init_array_end)();
@@ -188,7 +195,8 @@ SECTIONS {
   _sidata = LOADADDR(.data);
   .data : { _sdata = .; *(.data*) . = ALIGN(4); _edata = .; } > RAM AT> FLASH
   .bss  : { _sbss  = .; *(.bss*) *(COMMON) . = ALIGN(4); _ebss = .; } > RAM
-  /DISCARD/ : { *(.ARM.attributes) }
+  /* .ARM.attributes is not allocated, so keeping it costs no flash, and the
+     checks below read the build attributes out of it with readelf -A. */
 }
 LD
 
@@ -243,11 +251,17 @@ pass "Cortex-M33 firmware built via mcu"
 pass "elf + hex + bin produced"
 
 echo "-- build attributes --"
-arm-none-eabi-readelf -A build/firmware.elf | grep -E 'Tag_CPU_name|Tag_CPU_arch|Tag_FP_arch|Tag_ABI_VFP_args'
-arm-none-eabi-readelf -A build/firmware.elf | grep -q 'Tag_CPU_name: "Cortex-M33"' \
-    || fail "binary is NOT built for Cortex-M33 — the toolchain file is not applying -mcpu"
-pass "binary really is Cortex-M33"
-arm-none-eabi-readelf -A build/firmware.elf | grep -q 'Tag_ABI_VFP_args' \
+# Captured once: readelf is run three times otherwise, and `| grep -q` on a
+# still-writing producer is a SIGPIPE hazard under `set -o pipefail`.
+attrs=$(arm-none-eabi-readelf -A build/firmware.elf)
+grep -E 'Tag_CPU_name|Tag_CPU_arch|Tag_FP_arch|Tag_ABI_VFP_args' <<< "$attrs"
+# Assert on Tag_CPU_arch, not Tag_CPU_name: for -mcpu=cortex-m33 GCC 16 records
+# the architecture ("8-M.MAIN"), where older releases recorded the core name.
+# The architecture is the property that actually has to be right.
+grep -q 'Tag_CPU_arch: v8-M.mainline' <<< "$attrs" \
+    || fail "binary is NOT ARMv8-M Mainline - the toolchain file is not applying -mcpu"
+pass "binary really is ARMv8-M Mainline (Cortex-M33)"
+grep -q 'Tag_ABI_VFP_args' <<< "$attrs" \
     || fail "hard-float ABI attribute missing"
 pass "hard-float ABI"
 
@@ -300,8 +314,13 @@ sed -i 's/target_compile_definitions(firmware PRIVATE STM32WBA65xx)//' CMakeList
 sed -i 's|\$ENV{STM32_CMSIS_DIR}/wba/Include||' CMakeLists.txt
 sed -i 's|SCB->CPACR .*||; s|__DSB(); __ISB();||; s|#include "stm32wba65xx.h"||' src/startup.cpp
 mcu build
-arm-none-eabi-readelf -A build/firmware.elf | grep -q 'Cortex-M0+' \
-    || fail "M0+ build did not target Cortex-M0+"
+# v6S-M is the architecture for -mcpu=cortex-m0plus. As above, assert on
+# Tag_CPU_arch rather than the GCC-version-dependent Tag_CPU_name ("6S-M" here).
+m0attrs=$(arm-none-eabi-readelf -A build/firmware.elf)
+grep -q 'Tag_CPU_arch: v6S-M' <<< "$m0attrs" \
+    || fail "M0+ build did not target ARMv6S-M (cortex-m0plus)"
+! grep -q 'Tag_ABI_VFP_args' <<< "$m0attrs" \
+    || fail "M0+ build has a hard-float ABI attribute - it should be soft-float"
 pass "Cortex-M0+ soft-float build works"
 
 cd /

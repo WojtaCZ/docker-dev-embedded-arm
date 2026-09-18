@@ -99,7 +99,10 @@ fi
 
 # probe-rs knowledge of the parts that OpenOCD cannot handle
 if have probe-rs; then
-    if probe-rs chip list 2>/dev/null | grep -qi 'STM32WBA65'; then
+    # Captured, not piped: probe-rs exits 1 when its stdout closes early, which
+    # `set -o pipefail` would surface as a missing chip.
+    _chips=$(probe-rs chip list 2>/dev/null)
+    if grep -qi 'STM32WBA65' <<< "$_chips"; then
         emit OK "probe-rs-wba65" "STM32WBA65 supported (OpenOCD 0.12 does not support it)"
     else
         emit WARN "probe-rs-wba65" "probe-rs does not list STM32WBA65 — check probe-rs version"

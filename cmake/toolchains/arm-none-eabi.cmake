@@ -26,6 +26,14 @@
 set(CMAKE_SYSTEM_NAME      Generic)
 set(CMAKE_SYSTEM_PROCESSOR arm)
 
+# CMake re-reads this toolchain file inside the try_compile sub-project it uses
+# to detect the compiler ABI, and that sub-project does NOT inherit the cache
+# entries passed on the original command line. Without this list, ARM_CORE is
+# undefined there and the guard below aborts the probe with "ARM_CORE is not
+# set" even though the caller supplied it.
+list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES
+     ARM_CORE ARM_FPU ARM_FLOAT_ABI ARM_CMSE)
+
 if(NOT DEFINED ARM_CORE OR ARM_CORE STREQUAL "")
     message(FATAL_ERROR
         "ARM_CORE is not set.\n"
