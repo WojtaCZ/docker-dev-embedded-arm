@@ -7,8 +7,12 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
-  repository_dispatch:
-    types: [base-image-updated]
+  # Weekly rebuild. This is what keeps the chain fresh: there is no
+  # cross-repo dispatch any more, and a rebuild also picks up Arch package
+  # updates, which a change-triggered build would never do on its own.
+  # Staggered so a parent finishes before its children start (template 03:00, base 04:00, leaves 05:00 UTC Mondays).
+  schedule:
+    - cron: '0 5 * * 1'
 
 permissions:
   contents: read
@@ -89,13 +93,3 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      # Tell embedded-base its image is verified downstream, so :stable can move.
-      - name: Report upstream
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.DOWNSTREAM_DISPATCH_PAT }}
-        run: |
-          gh api repos/WojtaCZ/docker-dev-embedded-base/dispatches \
-             -f event_type=downstream-verified

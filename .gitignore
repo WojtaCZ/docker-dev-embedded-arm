@@ -29,3 +29,28 @@ compile_commands.json
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ---------------------------------------------------------------------------
+# Credentials — this repository is public. Nothing matching these should ever
+# be committed, and git history is permanent, so the ignore is the guard rail.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+.envrc
+.direnv/
+secrets/
+.netrc
+.git-credentials
+.npmrc
+.pypirc
+id_rsa*
+id_ed25519*
+id_ecdsa*
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+.claude/settings.local.json
+.claude/.credentials.json
