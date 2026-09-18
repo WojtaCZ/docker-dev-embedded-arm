@@ -69,7 +69,7 @@ for f in wba/Include/stm32wba65xx.h \
     [ -f "$STM32_CMSIS_DIR/$f" ] || fail "missing $STM32_CMSIS_DIR/$f"
     pass "$f"
 done
-ls "$STM32_CMSIS_DIR/wba/Source/Templates/gcc/" | grep -q 'startup_stm32wba65' \
+compgen -G "$STM32_CMSIS_DIR/wba/Source/Templates/gcc/startup_stm32wba65*" >/dev/null \
     || fail "no WBA65 startup template"
 pass "WBA65 startup template present"
 
@@ -314,7 +314,7 @@ pass "dev-doctor clean"
 
 echo "== CLAUDE.md memory layers assembled =="
 M="$HOME/.claude/CLAUDE.md"
-[ -d "$HOME/.claude-memory-layers" ] || fail "~/.claude-memory-layers missing"
+[ -d "$HOME/.claude-memory-layers" ] || fail "$HOME/.claude-memory-layers missing"
 for l in 00-baseline.md 10-embedded.md 20-arm.md; do
     [ -f "$HOME/.claude-memory-layers/$l" ] || fail "memory layer $l not installed"
 done
