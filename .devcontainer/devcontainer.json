@@ -2,26 +2,28 @@
     "name": "dev-template-embedded-arm",
     "build": {
         "context": "..",
-        "dockerfile": "../Dockerfile"
+        "dockerfile": "../Dockerfile",
+        "args": {
+            "BASE_TAG": "${localEnv:DEV_CHANNEL:latest}"
+        }
     },
     "remoteUser": "dev",
     "workspaceFolder": "/workspace",
     "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
-
     "mounts": [
         "source=${localEnv:HOME}/.claude.json,target=/host-claude-auth.json,type=bind",
-        "source=${localEnv:HOME}/.claude,target=/host-claude-dir,type=bind"
+        "source=${localEnv:HOME}/.claude,target=/host-claude-dir,type=bind",
+        "source=dev-cache-npm,target=/home/dev/.npm,type=volume",
+        "source=dev-cache-uv,target=/home/dev/.cache/uv,type=volume",
+        "source=dev-cache-ccache,target=/home/dev/.cache/ccache,type=volume"
     ],
-
     "runArgs": [
         "--init",
         "--device=/dev/bus/usb",
         "--group-add=dialout",
         "--group-add=plugdev"
     ],
-
-    "postCreateCommand": "bash /usr/local/bin/post-create.sh",
-
+    "postCreateCommand": "bash /usr/local/bin/post-create.sh && dev-doctor || true",
     "customizations": {
         "vscode": {
             "extensions": [
@@ -44,9 +46,14 @@
             ],
             "settings": {
                 "terminal.integrated.defaultProfile.linux": "bash",
-                "clangd.arguments": ["--compile-commands-dir=${workspaceFolder}/build"],
+                "clangd.arguments": [
+                    "--compile-commands-dir=${workspaceFolder}/build"
+                ],
                 "cortex-debug.armToolchainPath": "/usr/bin"
             }
         }
+    },
+    "remoteEnv": {
+        "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
     }
 }

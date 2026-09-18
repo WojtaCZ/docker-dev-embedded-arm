@@ -1,0 +1,3 @@
+# Segger J-Link (common PIDs)
+SUBSYSTEM=="usb", ATTRS{idVendor}=="1366", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1366", MODE="0666", GROUP="plugdev"

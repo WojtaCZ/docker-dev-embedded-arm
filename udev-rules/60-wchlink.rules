@@ -1,0 +1,5 @@
+# WCH-Link (WCH CH32V series)
+SUBSYSTEM=="usb",    ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="8010", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="usb",    ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="8012", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="tty",    ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="8010", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="tty",    ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="8012", MODE="0666", GROUP="plugdev"

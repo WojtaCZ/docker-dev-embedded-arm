@@ -29,6 +29,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Lint shell and JSON assets
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          shellcheck -S warning cmake/build-cmsis-dsp.sh scripts/*.sh \
+                                dev-doctor-checks/*.sh tests/*.sh
+          jq -e . profile.json > /dev/null
+          jq -e . claude-embedded-arm/settings.layer.json > /dev/null
+          echo "shell + JSON assets OK"
+
       - id: meta
         uses: docker/metadata-action@v5
         with:
@@ -41,11 +50,41 @@ jobs:
             type=sha,prefix=main-,enable={{is_default_branch}}
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - uses: docker/build-push-action@v5
+      # Build locally first — nothing is published unless the smoke tests pass.
+      # The smoke test cross-compiles a real Cortex-M33 (STM32WBA65) firmware,
+      # so a green run means STM32 development in this image actually works.
+      - name: Build (local, for smoke test)
+        uses: docker/build-push-action@v5
         with:
           context: .
-          push: ${{ github.event_name != 'pull_request' }}
+          load: true
+          tags: dev-embedded-arm:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test
+        run: |
+          docker run --rm -e DEV_SKIP_UPDATE=1 \
+            -v "$PWD/tests:/tests:ro" \
+            dev-embedded-arm:ci bash /tests/smoke.sh
+
+      - name: Push
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Tell embedded-base its image is verified downstream, so :stable can move.
+      - name: Report upstream
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.DOWNSTREAM_DISPATCH_PAT }}
+        run: |
+          gh api repos/WojtaCZ/docker-dev-embedded-base/dispatches \
+             -f event_type=downstream-verified

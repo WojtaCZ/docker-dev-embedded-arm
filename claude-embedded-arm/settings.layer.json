@@ -1,0 +1,5 @@
+{
+    "$schema": "https://json.schemastore.org/claude-code-settings.json",
+    "_comment": "Layer 20 — merged over 00-baseline.json and 10-embedded.json by entrypoint.sh. Declares only what the ARM leaf ADDS.",
+    "mcpServers": {}
+}

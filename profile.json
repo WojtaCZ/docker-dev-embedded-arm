@@ -1,22 +1,84 @@
 {
-    "_note": "Copied to .mcu-profile.json by /scaffold-mcu-project arm. Edit flash/debugServer/reset for your specific chip and probe.",
-    "_chips": {
-        "stm32f4x":   "OPENOCD_INTERFACE=interface/stlink.cfg  OPENOCD_TARGET=target/stm32f4x.cfg",
-        "stm32g0x":   "OPENOCD_INTERFACE=interface/stlink.cfg  OPENOCD_TARGET=target/stm32g0x.cfg",
-        "stm32l4x":   "OPENOCD_INTERFACE=interface/stlink.cfg  OPENOCD_TARGET=target/stm32l4x.cfg",
-        "rp2040":     "OPENOCD_INTERFACE=interface/cmsis-dap.cfg  OPENOCD_TARGET=target/rp2040.cfg",
-        "ti_mspm0":   "OPENOCD_INTERFACE=interface/xds110.cfg  OPENOCD_TARGET=target/ti_mspm0.cfg",
-        "stm32_bmp":  "Omit flash/debugServer — use BMP GDB server config in launch.json instead"
+    "_note": "Copied to .mcu-profile.json by /scaffold-mcu-project arm <part>. Full key reference: `mcu --schema`. Edit chip/core/fpu/floatAbi/flashTool and the sizeBudget for your specific part, then run `svd-find --set <part>` and `mcu --export`.",
+
+    "_flashTool_guidance": {
+        "openocd":  "STM32 F0/F1/F2/F3/F4/F7, G0/G4, L0/L1/L4, WB55, WL; RP2040; MSPM0. Supported by OpenOCD 0.12.0.",
+        "probe-rs": "REQUIRED for STM32WBA5x/WBA6x (incl. WBA65), U5, H5, C0, N6. OpenOCD 0.12 does not know these parts and fails with 'auto_probe failed' / 'Failed to read memory'. probe-rs also applies the ARMv8-M debug sequence, which OpenOCD's stm32wbax.cfg does not.",
+        "pyocd":    "Anything brand new. `pyocd pack install <part>` pulls device support AND the SVD from ST's CMSIS-Pack.",
+        "cubeprog": "ST's own STM32_Programmer_CLI, from a host-mounted STM32CubeCLT. Day-one support for every part; needs an ST account to download, so it is not baked into the image."
     },
+
+    "_chips": {
+        "stm32f0":     { "core": "cortex-m0",     "fpu": "none",        "floatAbi": "soft", "flashTool": "openocd",  "OPENOCD_TARGET": "target/stm32f0x.cfg" },
+        "stm32f1":     { "core": "cortex-m3",     "fpu": "none",        "floatAbi": "soft", "flashTool": "openocd",  "OPENOCD_TARGET": "target/stm32f1x.cfg" },
+        "stm32f3":     { "core": "cortex-m4",     "fpu": "fpv4-sp-d16", "floatAbi": "hard", "flashTool": "openocd",  "OPENOCD_TARGET": "target/stm32f3x.cfg" },
+        "stm32f4":     { "core": "cortex-m4",     "fpu": "fpv4-sp-d16", "floatAbi": "hard", "flashTool": "openocd",  "OPENOCD_TARGET": "target/stm32f4x.cfg" },
+        "stm32f7":     { "core": "cortex-m7",     "fpu": "fpv5-d16",    "floatAbi": "hard", "flashTool": "openocd",  "OPENOCD_TARGET": "target/stm32f7x.cfg" },
+        "stm32g0":     { "core": "cortex-m0plus", "fpu": "none",        "floatAbi": "soft", "flashTool": "openocd",  "OPENOCD_TARGET": "target/stm32g0x.cfg" },
+        "stm32g4":     { "core": "cortex-m4",     "fpu": "fpv4-sp-d16", "floatAbi": "hard", "flashTool": "openocd",  "OPENOCD_TARGET": "target/stm32g4x.cfg" },
+        "stm32l0":     { "core": "cortex-m0plus", "fpu": "none",        "floatAbi": "soft", "flashTool": "openocd",  "OPENOCD_TARGET": "target/stm32l0.cfg" },
+        "stm32l4":     { "core": "cortex-m4",     "fpu": "fpv4-sp-d16", "floatAbi": "hard", "flashTool": "openocd",  "OPENOCD_TARGET": "target/stm32l4x.cfg" },
+        "stm32h7":     { "core": "cortex-m7",     "fpu": "fpv5-d16",    "floatAbi": "hard", "flashTool": "openocd",  "OPENOCD_TARGET": "target/stm32h7x.cfg" },
+        "stm32wb55":   { "core": "cortex-m4",     "fpu": "fpv4-sp-d16", "floatAbi": "hard", "flashTool": "openocd",  "OPENOCD_TARGET": "target/stm32wbx.cfg", "_note": "Dual-core: the BLE stack runs on a separate Cortex-M0+ network core with ST's pre-flashed firmware." },
+        "stm32wl":     { "core": "cortex-m4",     "fpu": "none",        "floatAbi": "soft", "flashTool": "openocd",  "OPENOCD_TARGET": "target/stm32wlx.cfg" },
+        "stm32l5":     { "core": "cortex-m33",    "fpu": "fpv5-sp-d16", "floatAbi": "hard", "flashTool": "probe-rs", "_note": "TrustZone. Check option bytes before flashing — /stm32-option-bytes." },
+        "stm32u5":     { "core": "cortex-m33",    "fpu": "fpv5-sp-d16", "floatAbi": "hard", "flashTool": "probe-rs", "_note": "TrustZone." },
+        "stm32h5":     { "core": "cortex-m33",    "fpu": "fpv5-sp-d16", "floatAbi": "hard", "flashTool": "probe-rs", "_note": "TrustZone." },
+        "stm32wba5x":  { "core": "cortex-m33",    "fpu": "fpv5-sp-d16", "floatAbi": "hard", "flashTool": "probe-rs", "_note": "OpenOCD 0.12 lacks WBA flash support (added upstream after the release)." },
+        "stm32wba65":  { "core": "cortex-m33",    "fpu": "fpv5-sp-d16", "floatAbi": "hard", "flashTool": "probe-rs", "sizeBudget": { "flash": 2097152, "ram": 524288 }, "_note": "2 MB flash in two 1 MB banks @0x08000000, 448 KB SRAM + 64 KB SRAM2. OpenOCD does NOT support this part at all. Single-core: the BLE controller runs on this same M33 as ST binary libraries." },
+        "rp2040":      { "core": "cortex-m0plus", "fpu": "none",        "floatAbi": "soft", "flashTool": "openocd",  "OPENOCD_INTERFACE": "interface/cmsis-dap.cfg", "OPENOCD_TARGET": "target/rp2040.cfg" },
+        "ti_mspm0":    { "core": "cortex-m0plus", "fpu": "none",        "floatAbi": "soft", "flashTool": "openocd",  "OPENOCD_INTERFACE": "interface/xds110.cfg",   "OPENOCD_TARGET": "target/ti_mspm0.cfg" }
+    },
+
+    "chip": "STM32F407VG",
+    "core": "cortex-m4",
+    "fpu": "fpv4-sp-d16",
+    "floatAbi": "hard",
+    "probe": "stlink",
+    "flashTool": "openocd",
+
     "OPENOCD_INTERFACE": "interface/stlink.cfg",
     "OPENOCD_TARGET": "target/stm32f4x.cfg",
     "SVD_FILE": "",
-    "build":      "cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && cmake --build build -- -j$(nproc)",
-    "buildDebug": "cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug   -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && cmake --build build -- -j$(nproc)",
-    "clean":      "rm -rf build",
-    "flash":      "openocd -f ${OPENOCD_INTERFACE:-interface/stlink.cfg} -f ${OPENOCD_TARGET:?set OPENOCD_TARGET in .mcu-profile.json} -c 'program build/firmware.elf verify reset exit'",
+    "BMP_PORT": "/dev/ttyACM0",
+    "PORT": "/dev/ttyACM0",
+    "BAUD": "115200",
+    "ELF": "build/firmware.elf",
+    "rttChannel": 0,
+
+    "sizeBudget": { "flash": 1048576, "ram": 131072 },
+    "testTimeout": 30,
+    "testPass": "",
+    "testFail": "(HARDFAULT|PANIC|ASSERT FAILED)",
+
+    "build":      "cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=/opt/embedded/cmake/toolchains/arm-none-eabi.cmake -DARM_CORE=${core} -DARM_FPU=${fpu} -DARM_FLOAT_ABI=${floatAbi} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && cmake --build build -- -j$(nproc)",
+    "buildDebug": "cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug   -DCMAKE_TOOLCHAIN_FILE=/opt/embedded/cmake/toolchains/arm-none-eabi.cmake -DARM_CORE=${core} -DARM_FPU=${fpu} -DARM_FLOAT_ABI=${floatAbi} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && cmake --build build -- -j$(nproc)",
+    "hostTest":   "cmake -S . -B build-host -G Ninja -DHOST_TESTS=ON && cmake --build build-host && ctest --test-dir build-host --output-on-failure",
+    "clean":      "rm -rf build build-host",
+
+    "flash":      "openocd -f ${OPENOCD_INTERFACE:-interface/stlink.cfg} -f ${OPENOCD_TARGET:?set OPENOCD_TARGET in .mcu-profile.json} -c 'program ${ELF:-build/firmware.elf} verify reset exit'",
     "erase":      "openocd -f ${OPENOCD_INTERFACE:-interface/stlink.cfg} -f ${OPENOCD_TARGET:?set OPENOCD_TARGET in .mcu-profile.json} -c 'init; reset halt; flash erase_sector 0 0 last; exit'",
     "reset":      "openocd -f ${OPENOCD_INTERFACE:-interface/stlink.cfg} -f ${OPENOCD_TARGET:?set OPENOCD_TARGET in .mcu-profile.json} -c 'init; reset run; exit'",
+    "debugServer":"openocd -f ${OPENOCD_INTERFACE:-interface/stlink.cfg} -f ${OPENOCD_TARGET:?set OPENOCD_TARGET in .mcu-profile.json}",
+    "rtt":        "probe-rs attach --chip ${chip:?set chip in .mcu-profile.json} ${ELF:-build/firmware.elf}",
     "serial":     "picocom -b ${BAUD:-115200} ${PORT:-/dev/ttyACM0}",
-    "debugServer":"openocd -f ${OPENOCD_INTERFACE:-interface/stlink.cfg} -f ${OPENOCD_TARGET:?set OPENOCD_TARGET in .mcu-profile.json}"
+
+    "postBuild":  ["size"],
+
+    "_probe_rs_variant": {
+        "_note": "Swap these in when flashTool is probe-rs (STM32WBA65, U5, H5, L5, C0, N6). probe-rs works over ST-Link v2/v3 and CMSIS-DAP, so existing probes are fine.",
+        "flash":       "probe-rs download --chip ${chip} --binary-format elf ${ELF:-build/firmware.elf}",
+        "erase":       "probe-rs erase --chip ${chip}",
+        "reset":       "probe-rs reset --chip ${chip}",
+        "debugServer": "probe-rs gdb --chip ${chip} --gdb-connection-string 0.0.0.0:3333",
+        "rtt":         "probe-rs attach --chip ${chip} ${ELF:-build/firmware.elf}"
+    },
+
+    "_cubeprog_variant": {
+        "_note": "Requires a host-mounted STM32CubeCLT: -v ~/st/STM32CubeCLT:/opt/st/clt:ro. Use ST's programmer and GDB server, NOT the OpenOCD in that bundle — ST's fork was also reported missing WBA65 support.",
+        "flash":       "/opt/st/clt/STM32CubeProgrammer/bin/STM32_Programmer_CLI -c port=SWD mode=UR -w ${ELF:-build/firmware.elf} -v -rst",
+        "erase":       "/opt/st/clt/STM32CubeProgrammer/bin/STM32_Programmer_CLI -c port=SWD mode=UR -e all",
+        "reset":       "/opt/st/clt/STM32CubeProgrammer/bin/STM32_Programmer_CLI -c port=SWD mode=UR -rst",
+        "debugServer": "/opt/st/clt/STLink-gdb-server/bin/ST-LINK_gdbserver -p 3333 -cp /opt/st/clt/STM32CubeProgrammer/bin -halt"
+    }
 }

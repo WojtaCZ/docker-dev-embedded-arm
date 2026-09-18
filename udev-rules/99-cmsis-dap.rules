@@ -1,0 +1,9 @@
+# CMSIS-DAP probes: Raspberry Pi Picoprobe, DAPLink, ARM mbed, KEIL ULINKplus
+# Matched by interface class/subclass/protocol — works for all compliant adapters.
+SUBSYSTEM=="usb", ATTR{idVendor}=="2e8a", ATTR{idProduct}=="000c", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="tty", ATTR{idVendor}=="2e8a", ATTR{idProduct}=="000c", MODE="0666", GROUP="plugdev"
+# Generic HID CMSIS-DAP
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0d28", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="usb",    ATTRS{idVendor}=="0d28", MODE="0666", GROUP="plugdev"
+# DAPLink (NXP boards)
+SUBSYSTEM=="usb", ATTRS{idVendor}=="1fc9", MODE="0666", GROUP="plugdev"
