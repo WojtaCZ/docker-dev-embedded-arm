@@ -70,22 +70,31 @@ primary use case. See §5.
 
 ## 3. Verified defects in this image
 
-Checked against live Arch/AUR/GitHub sources on 2026-09-02.
+Found in the 2026-09-02 source review, with status as of 2026-09-18 — the day
+the CI smoke test first ran end to end, which is what closed most of them and
+found three more.
 
-| # | Severity | Finding |
-| --- | --- | --- |
-| **A0** | **Blocker (inherited)** | The parent `docker-dev-embedded-base` references **seven package names that do not exist**. This image cannot build until that is fixed. See [base writeup §5](../docker-dev-embedded-base/WRITEUP.md). |
-| **A1** | **Blocker** | The CMSIS-DSP build passes `-DCMAKE_TOOLCHAIN_FILE=/opt/cmsis-dsp/cmake/toolchains/aarch32-gcc.cmake`. **That file does not exist.** CMSIS-DSP's `cmake/` directory contains only `CMSISDSPConfig.cmake.in`. CMake will fail at configure time. |
-| **A2** | High | `-DARM_CPU="cortex-m4"` and `-DFPU=1` are **not CMSIS-DSP options**. `Source/CMakeLists.txt` declares `NEON`, `HELIUM`, `MVEF`, `MVEI`, `LOOPUNROLL`, `HOST`, `DISABLEFLOAT16` etc. — no `ARM_CPU`, no `FPU`. CMake would silently ignore them ("unused variable"). Core selection actually comes from the toolchain file's compile flags, which A1 means are absent. So even if A1 were patched with an empty toolchain file, the library would be built for the wrong architecture. |
-| A3 | High | `settings.json` declares `fetch` as `npx -y @modelcontextprotocol/server-fetch`. **The npm package does not exist** (404). Use `uvx mcp-server-fetch`. |
-| A4 | Medium | Even when built correctly, a **Cortex-M4 (ARMv7E-M)** CMSIS-DSP binary is the wrong artefact for Cortex-M33 (ARMv8-M Mainline) targets like STM32WBA65 or STM32U5/H5. Build attributes differ; at best you get linker warnings, at worst subtly wrong codegen assumptions. Ship per-core variants (see §5.2). |
-| A5 | Medium | `profile.json`'s `_chips` table covers F4/G0/L4 + RP2040 + MSPM0 only. **No STM32WB, WBA, U5, H5, H7, G4, L5, C0, or WL entry** — i.e. none of the modern ARMv8-M parts. |
-| A6 | Medium | No SVD files and no device headers. Every STM32 project needs `stm32XXxx.h`; the image provides only CMSIS *core* headers. Every user must solve this from scratch. Fixable, and freely licensed — see §4.4. |
-| A7 | Low | This repo's `README` tells you to run `install-host-udev-rules.sh` "from docker-dev-embedded-base", but that script is not in this repo. Either vendor it or link it. |
-| A8 | Low | `git clone --depth=1` of CMSIS_6 and CMSIS-DSP without a pinned tag means the image content drifts silently between builds. Pin to a release tag. |
-| A9 | Low | `/scaffold-mcu-project arm` generates a CMakeLists with **no `-mcpu`** anywhere — the toolchain file only sets `-mthumb`. A build will succeed and produce a binary for the wrong core. It should ask for, or read from the profile, the target core. |
+| # | Severity | Finding | Status |
+| --- | --- | --- | --- |
+| A0 | Blocker (inherited) | The parent referenced seven package names that do not exist, so this image could not build. | **Resolved** in embedded-base §5. |
+| A1 | Blocker | The CMSIS-DSP build passed `-DCMAKE_TOOLCHAIN_FILE=.../aarch32-gcc.cmake`, a file that does not exist. | **Resolved** — `build-cmsis-dsp.sh` generates a correct toolchain file per core. |
+| A2 | High | `-DARM_CPU` and `-DFPU` are not CMSIS-DSP options, so the core was never actually selected. | **Resolved** — the architecture comes from the generated toolchain file's flags; `DISABLEFLOAT16` is the only real option passed. |
+| A3 | High | `fetch` declared as a nonexistent npm package. | **Resolved** in embedded-base (`uvx mcp-server-fetch`). |
+| A4 | Medium | A Cortex-M4 (ARMv7E-M) CMSIS-DSP binary is the wrong artefact for Cortex-M33 (ARMv8-M Mainline). | **Resolved** — one library per core under `lib/<core>/`, selected by `find_cmsis_dsp()`. The smoke test links the M33 variant and checks the build attributes. |
+| A5 | Medium | `profile.json`'s `_chips` table covered F4/G0/L4 + RP2040 + MSPM0 only — no modern ARMv8-M part. | **Resolved** — 19 entries including `stm32wba65`, `stm32u5`, `stm32h5`, `stm32l5`, `stm32wl`. |
+| A6 | Medium | No SVD files and no device headers; every project had to solve that from scratch. | **Resolved** — ST CMSIS device headers for 16 families under `$STM32_CMSIS_DIR`, plus an SVD store and `svd-find`. |
+| A7 | Low | The README pointed at `install-host-udev-rules.sh` "from docker-dev-embedded-base", which was not in this repo. | **Resolved** — the script ships here. |
+| A8 | Low | `git clone --depth=1` of CMSIS_6 and CMSIS-DSP with no pinned tag meant silent content drift. | **Resolved** — pinned via `CMSIS_6_REF` and `CMSIS_DSP_REF` build args. |
+| A9 | **High** | `/scaffold-mcu-project` generated a CMakeLists with no `-mcpu`. | **Still open, and worse than described.** The command never mentions `CMAKE_TOOLCHAIN_FILE` or `ARM_CORE` at all, so a scaffolded project configures with the **host** compiler rather than the cross toolchain. The original "succeeds and produces a binary for the wrong core" no longer applies — the toolchain file now refuses to configure without `ARM_CORE` — but only once the project actually uses it. |
 
----
+Three further defects were found on 2026-09-18 by running the smoke test, which
+had never been executed before:
+
+| # | Severity | Finding | Status |
+| --- | --- | --- | --- |
+| A10 | **Blocker** | `arm-none-eabi.cmake` aborts when `ARM_CORE` is unset, but CMake re-reads the toolchain file inside the `try_compile` sub-project it uses to detect the compiler ABI, and that sub-project does not inherit cache entries from the command line. Every configure died with "ARM_CORE is not set" even when the caller had supplied it — meaning the documented build path had never worked. | **Resolved** — `CMAKE_TRY_COMPILE_PLATFORM_VARIABLES` forwards `ARM_CORE`, `ARM_FPU`, `ARM_FLOAT_ABI` and `ARM_CMSE`. |
+| A11 | High | The linked image was named `firmware`, not `firmware.elf`, which everything downstream expects. | **Resolved** in embedded-base's `embedded_artifacts()`. |
+| A12 | Medium | `probe-rs chip list \| grep -q` is unreliable under `set -o pipefail`: probe-rs exits 1 when its stdout closes early, so whether a check passed depended on where the pattern sorted in 5000 lines of output. `STM32F407` failed while `STM32WBA65` passed, though both are present. | **Resolved** — the listing is captured once and searched in memory, here and in the dev-doctor check. |
 
 ## 4. STM32 readiness assessment
 
