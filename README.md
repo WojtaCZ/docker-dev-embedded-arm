@@ -52,6 +52,36 @@ mcu flash
 `dev-doctor` verifies the whole environment, including whether probe-rs knows
 your part.
 
+## Project layout
+
+`/stm32-new-project` always produces the same tree, and the containerised
+Claude is told to keep to it (`claude-embedded-arm/CLAUDE.layer.md`):
+
+```
+CMakeLists.txt  .mcu-profile.json  .gitignore  README.md
+.vscode/{tasks,launch}.json
+cmake/{toolchain-arm-none-eabi.cmake, linker.cmake}
+linker/<PART>_FLASH.ld      svd/<PART>.svd
+startup/   vendor asm + system_stm32<fam>xx.c
+inc/       headers
+src/       your sources; src/logic/ = hardware-independent, host-testable
+lib/       third-party only, as submodules
+test/host/ native unit tests, -DHOST_TESTS=ON
+build/     generated, gitignored
+```
+
+It follows [WojtaCZ/f401-template](https://github.com/WojtaCZ/f401-template)
+with four deliberate deviations, all because the image already provides the
+equivalent: CMSIS is **not** vendored into `lib/` (use `$CMSIS_DIR` and
+`$STM32_CMSIS_DIR`), flags come from `embedded_hardening()` rather than a
+hand-rolled list, the linker script and SVD live in their own directories so a
+TrustZone secure/non-secure pair fits, and `build/` is gitignored.
+
+The per-project `cmake/toolchain-arm-none-eabi.cmake` is not boilerplate: it
+pins `ARM_CORE`/`ARM_FPU`/`ARM_FLOAT_ABI` for the board and adds them to
+`CMAKE_TRY_COMPILE_PLATFORM_VARIABLES`, without which CMake's compiler-ABI
+sub-configure trips the shared toolchain file's `ARM_CORE` guard.
+
 ## STM32WBA65 and the other Cortex-M33 parts
 
 **The compiler side is fine.** GCC 16.2 supports `cortex-m33`, `fpv5-sp-d16`,
