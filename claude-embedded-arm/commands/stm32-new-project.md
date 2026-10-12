@@ -89,8 +89,8 @@ if(NOT DEFINED LINKER_SCRIPT)
 endif()
 message(STATUS "Linker script: ${LINKER_SCRIPT}")
 
-target_link_options(${PROJECT_NAME}.elf PRIVATE -T${LINKER_SCRIPT})
-set_target_properties(${PROJECT_NAME}.elf PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
+target_link_options(${PROJECT_NAME} PRIVATE -T${LINKER_SCRIPT})
+set_target_properties(${PROJECT_NAME} PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
 ```
 
 ### 5. Device headers, startup, linker script
@@ -144,24 +144,24 @@ set(ST_PART   STM32<PART>xx)      # STM32WBA65xx, STM32F407xx, ...
 set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/linker/<PART>_FLASH.ld)
 
 # List sources explicitly — no file(GLOB).
-add_executable(${PROJECT_NAME}.elf
+add_executable(${PROJECT_NAME}
     src/main.cpp
     startup/startup_<part>.s
     startup/system_stm32<fam>xx.c
 )
 
-target_compile_definitions(${PROJECT_NAME}.elf PRIVATE ${ST_PART})
+target_compile_definitions(${PROJECT_NAME} PRIVATE ${ST_PART})
 
-target_include_directories(${PROJECT_NAME}.elf PRIVATE
+target_include_directories(${PROJECT_NAME} PRIVATE
     src
     inc
     $ENV{CMSIS_DIR}/CMSIS/Core/Include
     $ENV{STM32_CMSIS_DIR}/${ST_FAMILY}/Include
 )
 
-embedded_hardening(${PROJECT_NAME}.elf)
-embedded_artifacts(${PROJECT_NAME}.elf)
-embedded_stack_usage(${PROJECT_NAME}.elf)
+embedded_hardening(${PROJECT_NAME})
+embedded_artifacts(${PROJECT_NAME})
+embedded_stack_usage(${PROJECT_NAME})
 
 include(cmake/linker.cmake)
 ```
@@ -169,6 +169,11 @@ include(cmake/linker.cmake)
 Do not add a hand-rolled warning / optimisation / `--specs` flag block —
 `embedded_hardening()` owns that, and the core flags come from the toolchain
 wrapper in step 4.
+
+Name the target `${PROJECT_NAME}` — **not** `${PROJECT_NAME}.elf`.
+`embedded_artifacts()` sets a `.elf` `SUFFIX` on the target it's given; passing
+it a target already named `<name>.elf` produces `<name>.elf.elf`, and `mcu
+size`/`mcu build` then can't find the ELF it expects at `build/<name>.elf`.
 
 ### 7. SVD
 

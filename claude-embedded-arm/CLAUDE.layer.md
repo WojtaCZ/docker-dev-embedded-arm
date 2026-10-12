@@ -91,8 +91,11 @@ What makes it work — each of these is load-bearing:
   natively into the host-test binary. Host tests configure in their own build
   dir with **no** toolchain file (`cmake -S . -B build-host -DHOST_TESTS=ON`);
   `host-test.cmake` hard-errors if included while cross-compiling.
-- **Target name is `${PROJECT_NAME}.elf`**, and `.mcu-profile.json`'s `ELF`
-  must match it.
+- **Target name is `${PROJECT_NAME}` — do not append `.elf`.**
+  `embedded_artifacts()` sets a `.elf` `SUFFIX` on the target; giving it a
+  target already named `<name>.elf` produces `<name>.elf.elf` and `mcu size`
+  can't find the result. The output file is `<name>.elf`, and that is what
+  `.mcu-profile.json`'s `ELF` must match.
 - **`build/` is generated.** The upstream f401 template commits it; do not.
 
 ### Skills in this layer

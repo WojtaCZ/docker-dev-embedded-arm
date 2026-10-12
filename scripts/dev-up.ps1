@@ -10,8 +10,15 @@
         usbipd bind   --busid <busid>
         usbipd attach --wsl --busid <busid>
 
-    Then run this script. The probe must be attached BEFORE the container
-    starts — /dev/bus/usb is bind-mounted once, at container start.
+    Then run this script. /dev/bus/usb and /dev/input are both bind-mounted
+    live with a wildcard device-cgroup rule, so probes and touch/HID input
+    devices attached to WSL AFTER the container is already running — a second
+    board, a touch panel, a hotplug replug — are picked up with no container
+    restart. /dev/hidraw* nodes are the exception: they're flat in /dev with
+    no directory to mount live, so a device that only exposes hidraw (no
+    input handler) needs dev-up.sh re-run after it's plugged in. usbipd attach
+    is still needed once per device per WSL boot; that step is what gets it
+    into WSL's kernel at all and is outside the container's control.
 
 .EXAMPLE
     .\scripts\dev-up.ps1

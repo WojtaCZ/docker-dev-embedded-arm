@@ -35,7 +35,7 @@ and the shared VSCode templates.
 sudo ./scripts/install-host-udev-rules.sh
 sudo usermod -aG dialout,plugdev $USER      # log out and back in
 
-# 2. Plug in the probe FIRST — /dev/bus/usb is bind-mounted at container start
+# 2. Plug in the probe — hotplugging after the container is up works too
 
 # 3. Start the container
 ./scripts/dev-up.sh /path/to/your/firmware
@@ -246,6 +246,48 @@ svd-find --pack stm32wba65   # WBA6x is in no open mirror — pull ST's CMSIS-Pa
 | TI XDS110 | `interface/xds110.cfg` | — |
 
 `/probe-detect` reports what is connected and the exact next command to run.
+
+### USB devices under test
+
+A board whose *user* port enumerates as a USB device (HID, CDC, …) is reached
+the same way, with one difference: `dev-up.sh` bind-mounts `/dev/bus/usb` as a
+live directory, so libusb access is hotplug-capable, but `hidraw` nodes are flat
+in `/dev` with no directory to mount live — they are enumerated once at start.
+Plug the board in **before** `dev-up.sh`, or re-run it afterwards. The `hidraw`
+cgroup grant is a wildcard on the major read from `/proc/devices` (it is
+assigned dynamically, so it is not hardcoded).
+
+`/dev/ttyACM*` — the ST-Link's (and most CDC-ACM probes') virtual COM port,
+used for VCP logging and RTT-over-serial — is the same shape as `hidraw`: flat
+in `/dev`, enumerated once at start, needs a re-run of `dev-up.sh` for a port
+that appears afterwards. Its cgroup grant is likewise a wildcard on the major
+read from `/proc/devices` (LANANA assigns it 166, but it's still read rather
+than hardcoded).
+
+`/dev/input` — touch panels, styluses, anything the kernel binds a Linux input
+handler to (`hid-multitouch` included) — *is* a real subsystem directory like
+`/dev/bus/usb`, so it gets the same live bind mount and is hotplug-capable too;
+no restart needed for a panel attached to WSL after the container is already
+running.
+
+Access is by group, not by `0666`: write a host udev rule giving your VID/PID
+`GROUP="plugdev"`, and the container's `dev` user picks it up through the
+`--group-add` of the host plugdev GID (input nodes land in the kernel's own
+`input` group instead, which gets the same `--group-add` treatment). On
+Windows, attach the device to WSL first with `usbipd bind --busid <id>` then
+`usbipd attach --wsl --busid <id>`.
+
+**First attach on a freshly booted WSL2 instance:** `/dev/bus/usb`, `/sys/bus/usb`
+and `/dev/input` don't exist at all until *something* has registered the USB
+subsystem — which, on a fresh boot, only happens once the first device is
+attached with `usbipd attach --wsl`. If `dev-up.sh` was run before that point,
+none of the USB bind mounts or `--device-cgroup-rule`s were added (the live-mount
+design makes *later* devices hotplug-capable, but can't retroactively create a
+mount that didn't exist at container creation) — check with `docker inspect
+<container> --format '{{json .HostConfig.Binds}}'`. The fix is simply to
+re-run `dev-up.sh` now that the host has a USB subsystem; every probe
+subsequently attached or unplugged/replugged is picked up live, with no further
+restarts.
 
 ## Claude skills (12)
 
