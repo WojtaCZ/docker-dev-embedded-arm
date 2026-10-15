@@ -125,12 +125,12 @@ else
     echo "WARN: /dev/bus/usb not present on this host — no probe passthrough." >&2
 fi
 [ -d /dev/serial/by-id ] && USB_ARGS+=(-v /dev/serial/by-id:/dev/serial/by-id:ro)
-# Unguarded, this breaks `docker run` outright on a host with no USB subsystem
-# yet (common on a fresh WSL2 boot before any `usbipd attach`): `-v` tries to
-# create the container-side mountpoint under sysfs, and sysfs rejects mkdir
-# with EPERM when the host source doesn't exist, failing container start
-# entirely rather than just skipping probe passthrough.
-[ -d /sys/bus/usb ] && USB_ARGS+=(-v /sys/bus/usb:/sys/bus/usb)
+# /sys/bus/usb is deliberately NOT bind-mounted. Docker Desktop's WSL
+# integration remembers every bind source and replays it when the distro proxy
+# starts; after a WSL restart (usbipd detached) /sys/bus/usb no longer exists,
+# sysfs rejects the mkdir, and the whole integration fails with
+# "mkdir /sys/bus/usb: operation not permitted". The container's own /sys is
+# the kernel's sysfs, so /sys/bus/usb appears there by itself once USB exists.
 # DEV_PROBE stays a static, one-shot --device: unlike the bus-wide bind mount
 # above, a single device node still has to exist at container start.
 [ -n "${DEV_PROBE:-}" ] && [ -e "$DEV_PROBE" ] && USB_ARGS+=(--device="$DEV_PROBE")
